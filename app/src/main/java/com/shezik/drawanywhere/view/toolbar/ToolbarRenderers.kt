@@ -26,7 +26,7 @@ import com.shezik.drawanywhere.ui.theme.Spacing
 
 @Composable
 internal fun RenderButton(button: ToolbarButton, popupAlignment: Alignment, modifier: Modifier = Modifier) {
-    if (button.hasPopup) {
+    if (button.hasPopup && (button.onClick == null || button.isSelected)) {
         PopupToolbarButton(modifier = modifier, button = button, popupAlignment = popupAlignment)
     } else {
         AnimatedToolbarButton(modifier = modifier, button = button)
@@ -70,7 +70,9 @@ internal fun ToolbarExpandButton(
 
 @Composable
 internal fun AnimatedToolbarButton(modifier: Modifier, button: ToolbarButton) {
-    val iconColor = button.color ?: MaterialTheme.colorScheme.onSurface
+    val iconColor = button.color
+        ?: if (button.isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+        else MaterialTheme.colorScheme.onSurfaceVariant
     val scale by animateFloatAsState(
         targetValue = if (button.isEnabled) 1f else 0.9f,
         animationSpec = tween(200),
@@ -80,15 +82,26 @@ internal fun AnimatedToolbarButton(modifier: Modifier, button: ToolbarButton) {
         onClick = button.onClick ?: {},
         enabled = button.isEnabled,
         modifier = modifier
+            .then(if (!button.isProminent) Modifier.size(40.dp) else Modifier)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .background(color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), shape = CircleShape)
-    ) {
-        button.iconContent?.invoke()
-            ?: Icon(
-                imageVector = button.icon,
-                contentDescription = button.contentDescription,
-                tint = if (button.isEnabled) iconColor else iconColor.copy(alpha = 0.4f)
+            .background(
+                color = if (button.isSelected) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                shape = CircleShape
             )
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(if (button.isProminent) 24.dp else 20.dp)
+        ) {
+            button.iconContent?.invoke()
+                ?: Icon(
+                    imageVector = button.icon,
+                    contentDescription = button.contentDescription,
+                    tint = if (button.isEnabled) iconColor else iconColor.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxSize()
+                )
+        }
     }
 }
 
@@ -104,20 +117,28 @@ internal fun PopupToolbarButton(
         IconButton(
             onClick = { isPopupOpen = !isPopupOpen },
             enabled = button.isEnabled,
-            modifier = Modifier.background(
-                color = if (isPopupOpen) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                shape = CircleShape
-            )
-        ) {
-            button.iconContent?.invoke()
-                ?: Icon(
-                    imageVector = button.icon,
-                    contentDescription = button.contentDescription,
-                    tint = if (isPopupOpen) button.color ?: MaterialTheme.colorScheme.onPrimaryContainer
-                    else if (button.isEnabled) button.color ?: MaterialTheme.colorScheme.onSurface
-                    else (button.color ?: MaterialTheme.colorScheme.onSurface).copy(alpha = 0.4f)
+            modifier = Modifier
+                .then(if (!button.isProminent) Modifier.size(40.dp) else Modifier)
+                .background(
+                    color = if (isPopupOpen || button.isSelected) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                    shape = CircleShape
                 )
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(if (button.isProminent) 24.dp else 20.dp)
+            ) {
+                button.iconContent?.invoke()
+                    ?: Icon(
+                        imageVector = button.icon,
+                        contentDescription = button.contentDescription,
+                        tint = if (isPopupOpen || button.isSelected) button.color ?: MaterialTheme.colorScheme.onPrimaryContainer
+                        else if (button.isEnabled) button.color ?: MaterialTheme.colorScheme.onSurfaceVariant
+                        else (button.color ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.4f),
+                        modifier = Modifier.fillMaxSize()
+                    )
+            }
         }
         if (isPopupOpen && button.popupPages.isNotEmpty()) {
             val pagerState = rememberPagerState(initialPage = 0) { button.popupPages.size }

@@ -60,10 +60,13 @@ data class UiState(
     val secondDrawerOpen: Boolean = false,
 
     val firstDrawerButtons: Set<String> = setOf(
-        "undo", "clear", "tool_controls", "color_picker", "zoom_lock"
+        "undo", "redo",
+        "tool_Pen", "tool_Laser", "tool_Rectangle", "tool_Ellipse",
+        "tool_StrokeEraser", "tool_PixelEraser",
+        "color_picker", "clear", "zoom_lock"
     ),
     val secondDrawerButtons: Set<String> = setOf(
-        "passthrough", "redo", "settings"
+        "passthrough", "settings"
     ),
     val secondDrawerPinnedButtons: Set<String> = emptySet()
 ) {

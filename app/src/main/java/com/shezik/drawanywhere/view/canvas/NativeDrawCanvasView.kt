@@ -40,10 +40,12 @@ class NativeDrawCanvasView(
         private const val FRAME_INTERVAL_MS = 16L          // ~60fps
         private const val HUD_MARGIN_DP = 24f
         private const val HUD_BOTTOM_OFFSET_PX = 48f
-        private const val HUD_PADDING_DP = 8f
-        private const val HUD_TEXT_SIZE_SP = 18f
-        private const val HUD_TEXT_COLOR = 0xCC_FFFFFF.toInt()
-        private const val HUD_BG_COLOR = 0x80_000000.toInt()
+        private const val HUD_PADDING_X_DP = 14f
+        private const val HUD_PADDING_Y_DP = 7f
+        private const val HUD_CORNER_RADIUS_DP = 16f
+        private const val HUD_TEXT_SIZE_SP = 14f
+        private const val HUD_TEXT_COLOR = 0xF4_F2EFF5.toInt()   // M3 inverseOnSurface
+        private const val HUD_BG_COLOR = 0xE6_2A2A2E.toInt()     // M3 inverseSurface 系
     }
 
     // ── Touch input (delegated) ───────────────────────────────────
@@ -173,17 +175,19 @@ class NativeDrawCanvasView(
         if (label.isNotEmpty() || viewModel.lockMode.value != LockMode.NONE) {
             val text = "$label$lockIcon"
             val density = context.resources.displayMetrics.density
-            val pad = HUD_PADDING_DP * density
+            val padX = HUD_PADDING_X_DP * density
+            val padY = HUD_PADDING_Y_DP * density
+            val corner = HUD_CORNER_RADIUS_DP * density
             val x = HUD_MARGIN_DP * density
             val y = height - HUD_BOTTOM_OFFSET_PX
             val fm = hudPaint.fontMetrics
             val rect = android.graphics.RectF(
-                x - pad,
-                y + fm.ascent - pad,
-                x + hudPaint.measureText(text) + pad,
-                y + fm.descent + pad
+                x - padX,
+                y + fm.ascent - padY,
+                x + hudPaint.measureText(text) + padX,
+                y + fm.descent + padY
             )
-            canvas.drawRoundRect(rect, pad, pad, hudBgPaint)
+            canvas.drawRoundRect(rect, corner, corner, hudBgPaint)
             canvas.drawText(text, x, y, hudPaint)
         }
 

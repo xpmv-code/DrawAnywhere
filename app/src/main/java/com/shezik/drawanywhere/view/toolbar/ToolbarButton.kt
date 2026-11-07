@@ -7,9 +7,12 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +50,8 @@ internal data class ToolbarButton(
     val color: Color? = null,
     val contentDescription: String,
     val isEnabled: Boolean = true,
+    val isSelected: Boolean = false,
+    val isProminent: Boolean = false,
     val onClick: (() -> Unit)? = null,
     val popupPages: List<@Composable () -> Unit> = emptyList(),
     val iconContent: (@Composable () -> Unit)? = null,
@@ -102,21 +107,49 @@ internal fun createAllToolbarButtons(
         isEnabled = uiState.canvasVisible && canClearCanvas,
         onClick = onClearCanvas
     ),
+) + PenType.entries.map { type ->
     ToolbarButton(
-        id = "tool_controls",
-        icon = uiState.currentPenType.icon,
-        contentDescription = stringResource(R.string.tool_controls),
-        popupPages = listOf(
-            { PenTypeSelector(currentPenType = uiState.currentPenType, onPenTypeSwitch = onPenTypeSwitch) },
-            { PenControls(penConfig = uiState.currentPenConfig, onStrokeWidthChange = onStrokeWidthChange, onAlphaChange = onAlphaChange, alphaEnabled = !uiState.currentPenType.isEraser) }
-        )
-    ),
+        id = "tool_${type.name}",
+        icon = type.icon,
+        contentDescription = stringResource(type.labelResId),
+        isSelected = uiState.currentPenType == type,
+        isProminent = true,
+        onClick = if (uiState.currentPenType == type) null else ({ onPenTypeSwitch(type) }),
+        popupPages = listOf {
+            PenControls(
+                penConfig = uiState.currentPenConfig,
+                onStrokeWidthChange = onStrokeWidthChange,
+                onAlphaChange = onAlphaChange,
+                alphaEnabled = !uiState.currentPenType.isEraser
+            )
+        }
+    )
+} + listOf(
     ToolbarButton(
         id = "color_picker",
         icon = Icons.Default.Palette,
         color = if (!uiState.currentPenType.isEraser) uiState.currentPenConfig.color else null,
         contentDescription = stringResource(R.string.color_picker),
         isEnabled = !uiState.currentPenType.isEraser,
+        isProminent = true,
+        iconContent = {
+            val dotColor = if (uiState.currentPenType.isEraser) null else uiState.currentPenConfig.color
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(22.dp)
+                    .background(
+                        color = dotColor ?: MaterialTheme.colorScheme.surfaceVariant,
+                        shape = CircleShape
+                    )
+                    .border(
+                        width = 1.5.dp,
+                        color = if (dotColor != null) MaterialTheme.colorScheme.outline
+                        else MaterialTheme.colorScheme.outlineVariant,
+                        shape = CircleShape
+                    )
+            ) {}
+        },
         popupPages = listOf(
             { ColorPicker(
                 selectedColor = uiState.currentPenConfig.color,

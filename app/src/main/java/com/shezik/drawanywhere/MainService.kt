@@ -115,11 +115,6 @@ class MainService : Service() {
 
         // -------- Setup toolbar (Compose) --------
         toolbarLifecycleOwner.start()
-        toolbarView = ComposeView(this).apply {
-            setContent { DrawToolbar(viewModel = viewModel) }
-        }
-        toolbarLifecycleOwner.attachTo(toolbarView)
-
         val toolbarParams = LayoutParams(
             LayoutParams.WRAP_CONTENT,
             LayoutParams.WRAP_CONTENT,
@@ -129,9 +124,28 @@ class MainService : Service() {
                     LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply { gravity = Gravity.TOP or Gravity.START }
-
-        applyToolbarPosition(toolbarParams, initialServiceState)
         // ---------------------------------------
+
+        toolbarView = ComposeView(this).apply {
+            setContent {
+                DrawToolbar(
+                    viewModel = viewModel,
+                    onNaturalSizeChanged = { naturalW, naturalH ->
+                        // Wrap-content overlay windows get clamped by the system
+                        // measure spec; size the window explicitly instead.
+                        toolbarView.post {
+                            if (toolbarParams.width != naturalW || toolbarParams.height != naturalH) {
+                                toolbarParams.width = naturalW
+                                toolbarParams.height = naturalH
+                                windowManager.updateViewLayout(toolbarView, toolbarParams)
+                            }
+                        }
+                    }
+                )
+            }
+        }
+        toolbarLifecycleOwner.attachTo(toolbarView)
+        applyToolbarPosition(toolbarParams, initialServiceState)
 
         // -------- Setup dismiss target (shown when dragging toolbar) --------
         dismissTargetView = DismissTargetView(this)

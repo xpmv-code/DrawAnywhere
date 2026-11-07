@@ -1,5 +1,7 @@
 package com.shezik.drawanywhere.view.toolbar
 
+import android.content.Context
+import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
@@ -17,9 +19,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.shezik.drawanywhere.DrawViewModel
 import com.shezik.drawanywhere.util.scrollFadingEdges
@@ -31,7 +41,8 @@ enum class ToolbarOrientation { HORIZONTAL, VERTICAL }
 @Composable
 fun DrawToolbar(
     viewModel: DrawViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNaturalSizeChanged: (widthPx: Int, heightPx: Int) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val canUndo by viewModel.canUndo.collectAsState()
@@ -71,12 +82,34 @@ fun DrawToolbar(
     ).associateBy { it.id }
 
     DrawAnywhereTheme {
-        BoxWithConstraints {
+        // WRAP_CONTENT overlay windows report unreliable incoming constraints on
+        // some OEM skins (HyperOS caps at a stale frame); use the real display
+        // metrics as the size ceiling instead.
+        val density = LocalDensity.current
+        val windowManager = LocalContext.current.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        val screenBounds = remember { windowManager?.maximumWindowMetrics?.bounds }
+        val maxW = screenBounds?.let { with(density) { it.width().toDp() } }
+        val maxH = screenBounds?.let { with(density) { it.height().toDp() } }
+        var reportedSize by remember { mutableStateOf(IntSize.Zero) }
+        BoxWithConstraints(
+            modifier = Modifier.layout { measurable, _ ->
+                // Overlay windows cap wrap-content measurement (HyperOS clamps at a
+                // stale 1160px frame); measure unbounded and report the natural size
+                // upward so the service can size the window explicitly.
+                val placeable = measurable.measure(Constraints())
+                val natural = IntSize(placeable.width, placeable.height)
+                if (natural != reportedSize) {
+                    reportedSize = natural
+                    onNaturalSizeChanged(natural.width, natural.height)
+                }
+                layout(natural.width, natural.height) { placeable.place(0, 0) }
+            }
+        ) {
             DraggableToolbarCard(
                 modifier = modifier
                     .wrapContentSize(unbounded = true)
-                    .widthIn(max = maxWidth)
-                    .heightIn(max = maxHeight)
+                    .then(maxW?.let { Modifier.widthIn(max = it) } ?: Modifier.widthIn(max = maxWidth))
+                    .then(maxH?.let { Modifier.heightIn(max = it) } ?: Modifier.heightIn(max = maxHeight))
                     .scrollFadingEdges(hScrollState, false)
                     .scrollFadingEdges(vScrollState, true)
                     .horizontalScroll(hScrollState)
@@ -131,11 +164,38 @@ internal fun ToolbarButtonsContainer(
     val isExpandButtonVisible = isFirstDrawerOpen && secondDrawerButtonIds.isNotEmpty()
 
     val isHorizontal = orientation == ToolbarOrientation.HORIZONTAL
+    val toolButtonIds = firstDrawerButtonIds.filter { it.startsWith("tool_") }
+    val otherFirstDrawerIds = firstDrawerButtonIds.filter { !it.startsWith("tool_") }
+
+    @Composable
+    fun ToolGrid() {
+        if (isHorizontal) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                toolButtonIds.forEach { id ->
+                    allButtonsMap[id]?.let { RenderButton(it, popupAlignment) }
+                }
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                toolButtonIds.chunked(2).forEach { rowIds ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        rowIds.forEach { id ->
+                            allButtonsMap[id]?.let { RenderButton(it, popupAlignment) }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     @Composable
     fun ToolbarContent() {
         standaloneButtonIds.forEach { id -> allButtonsMap[id]?.let { RenderButton(it, popupAlignment) } }
-        firstDrawerButtonIds.forEach { id ->
+        AnimatedVisibility(isFirstDrawerOpen,
+            enter = fadeIn(tween(300)) + scaleIn(tween(300), initialScale = 0.5f),
+            exit = fadeOut(tween(300)) + scaleOut(tween(300), targetScale = 0.5f)
+        ) { ToolGrid() }
+        otherFirstDrawerIds.forEach { id ->
             allButtonsMap[id]?.let { btn ->
                 AnimatedVisibility(isFirstDrawerOpen,
                     enter = fadeIn(tween(300)) + scaleIn(tween(300), initialScale = 0.5f),
@@ -145,11 +205,11 @@ internal fun ToolbarButtonsContainer(
         }
         AnimatedVisibility(isDividerVisible, enter = fadeIn(tween(300)), exit = fadeOut(tween(300))) {
             if (isHorizontal) VerticalDivider(
-                Modifier.height(24.dp).padding(horizontal = Spacing.sm), thickness = 2.dp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                Modifier.height(24.dp).padding(horizontal = Spacing.sm), thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant)
             else HorizontalDivider(
-                Modifier.width(24.dp).padding(vertical = Spacing.sm), thickness = 2.dp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                Modifier.width(24.dp).padding(vertical = Spacing.sm), thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant)
         }
         secondDrawerButtonIds.forEach { id ->
             allButtonsMap[id]?.let { btn ->
