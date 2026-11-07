@@ -24,6 +24,7 @@
     <string name="finger_drawing">手指绘制</string>
     <string name="pressure_sensitive_strokes">压感笔迹</string>
     <string name="pressure_sensitive_strokes_desc">笔迹粗细随触控笔压感变化（画笔与激光笔）</string>
+    <string name="toolbar_dim_opacity">工具栏静置后透明度</string>
     <string name="key_filter_service_label">DrawAnywhere 笔键</string>
     <string name="key_filter_service_desc">让 DrawAnywhere 响应触控笔侧键（在将其报告为 PAGE_UP/PAGE_DOWN 按键的设备上）。仅在 DrawAnywhere 画布可见时生效。</string>
     <string name="quit">退出</string>

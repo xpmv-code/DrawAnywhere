@@ -50,6 +50,7 @@ data class UiState(
     val visibleOnStart: Boolean = true,
     val fingerDrawingEnabled: Boolean = true,
     val pressureEnabled: Boolean = true,
+    val toolbarDimAlpha: Float = DrawViewModel.TOOLBAR_DIM_ALPHA,
     val recentColors: List<Color> = emptyList(),
 
     val currentPenType: PenType = PenType.Pen,
@@ -61,7 +62,7 @@ data class UiState(
 
     val firstDrawerButtons: Set<String> = setOf(
         "undo", "redo",
-        "tool_Pen", "tool_Laser", "tool_Rectangle", "tool_Ellipse",
+        "tool_Pen", "tool_Laser",
         "tool_StrokeEraser", "tool_PixelEraser",
         "color_picker", "clear", "zoom_lock"
     ),
@@ -96,6 +97,12 @@ class DrawViewModel(
         const val TOOLBAR_DIM_DELAY_MS = 3_000L
         const val TOOLBAR_DIM_ALPHA = 0.5f
         const val TOOLBAR_DIM_DURATION_MS = 300L
+
+        /** Tools shown in the toolbar and cycled by the lower pen key;
+         *  shape tools (Rectangle/Ellipse) are omitted as rarely used. */
+        val TOOLBAR_PEN_TYPES = listOf(
+            PenType.Pen, PenType.Laser, PenType.StrokeEraser, PenType.PixelEraser
+        )
     }
     private val _uiState = MutableStateFlow(initialUiState)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -320,13 +327,17 @@ class DrawViewModel(
     fun setPressureEnabled(state: Boolean) =
         _uiState.update { it.copy(pressureEnabled = state) }
 
+    fun setToolbarDimAlpha(state: Float) =
+        _uiState.update { it.copy(toolbarDimAlpha = state) }
+
     // --- Stylus key actions (H7 side buttons via keylayout → PAGE_UP / PAGE_DOWN) ---
 
-    /** Cycle to the next tool in toolbar order (Pen → Laser → … → PixelEraser → Pen). */
+    /** Cycle to the next toolbar tool (Pen → Laser → StrokeEraser → PixelEraser → Pen),
+     *  skipping shape tools removed from the toolbar. */
     fun cyclePenType() {
-        val order = PenType.entries
-        val next = order[(uiState.value.currentPenType.ordinal + 1) % order.size]
-        switchToPen(next)
+        val order = TOOLBAR_PEN_TYPES
+        val index = order.indexOf(uiState.value.currentPenType) + 1
+        switchToPen(order[index % order.size])
     }
 
     /**

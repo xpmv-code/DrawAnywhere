@@ -13,8 +13,8 @@ android {
         applicationId = "com.shezik.drawanywhere"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "2.3-h7.5"
+        versionCode = 11
+        versionName = "2.3-h7.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

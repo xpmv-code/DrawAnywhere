@@ -175,11 +175,23 @@ class MainService : Service() {
         }
 
         // Observe UI state changes
+        var lastToolbarAlpha = -1f
+        fun applyToolbarAlpha(dimmed: Boolean, dimAlpha: Float) {
+            val targetAlpha = if (dimmed) 1.0f else dimAlpha
+            if (targetAlpha == lastToolbarAlpha) return
+            lastToolbarAlpha = targetAlpha
+            toolbarView.animate()
+                .alpha(targetAlpha)
+                .setDuration(DrawViewModel.TOOLBAR_DIM_DURATION_MS)
+                .start()
+        }
+
         serviceScope.launch {
             viewModel.uiState.collect { state ->
                 applyCanvasPassthrough(canvasParams, state.canvasPassthrough)
                 windowManager.updateViewLayout(canvasView, canvasParams)
                 canvasView.visibility = if (state.canvasVisible) View.VISIBLE else View.GONE
+                applyToolbarAlpha(viewModel.serviceState.value.toolbarActive, state.toolbarDimAlpha)
             }
         }
 
@@ -189,11 +201,7 @@ class MainService : Service() {
                 applyToolbarPosition(toolbarParams, state)
                 windowManager.updateViewLayout(toolbarView, toolbarParams)
 
-                val targetAlpha = if (state.toolbarActive) 1.0f else DrawViewModel.TOOLBAR_DIM_ALPHA
-                toolbarView.animate()
-                    .alpha(targetAlpha)
-                    .setDuration(DrawViewModel.TOOLBAR_DIM_DURATION_MS)
-                    .start()
+                applyToolbarAlpha(state.toolbarActive, viewModel.uiState.value.toolbarDimAlpha)
             }
         }
 

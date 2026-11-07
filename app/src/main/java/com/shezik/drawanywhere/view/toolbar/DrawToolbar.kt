@@ -76,6 +76,8 @@ fun DrawToolbar(
         onChangeFingerDrawingEnabled = viewModel::setFingerDrawingEnabled,
         pressureEnabled = uiState.pressureEnabled,
         onChangePressureEnabled = viewModel::setPressureEnabled,
+        toolbarDimAlpha = uiState.toolbarDimAlpha,
+        onChangeToolbarDimAlpha = viewModel::setToolbarDimAlpha,
         onCycleLockMode = viewModel::cycleLockMode,
         lockMode = lockMode,
         onQuitApplication = viewModel::quitApplication

@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.shezik.drawanywhere.R
+import com.shezik.drawanywhere.DrawViewModel
 import com.shezik.drawanywhere.UiState
 import com.shezik.drawanywhere.model.PenType
 import com.shezik.drawanywhere.view.canvas.LockMode
@@ -83,6 +84,8 @@ internal fun createAllToolbarButtons(
     onChangeFingerDrawingEnabled: (Boolean) -> Unit,
     pressureEnabled: Boolean,
     onChangePressureEnabled: (Boolean) -> Unit,
+    toolbarDimAlpha: Float,
+    onChangeToolbarDimAlpha: (Float) -> Unit,
     onCycleLockMode: () -> Unit,
     lockMode: LockMode,
     onQuitApplication: () -> Unit
@@ -107,7 +110,7 @@ internal fun createAllToolbarButtons(
         isEnabled = uiState.canvasVisible && canClearCanvas,
         onClick = onClearCanvas
     ),
-) + PenType.entries.map { type ->
+) + DrawViewModel.TOOLBAR_PEN_TYPES.map { type ->
     ToolbarButton(
         id = "tool_${type.name}",
         icon = type.icon,
@@ -201,6 +204,8 @@ internal fun createAllToolbarButtons(
                 onChangeFingerDrawingEnabled = onChangeFingerDrawingEnabled,
                 pressureEnabled = pressureEnabled,
                 onChangePressureEnabled = onChangePressureEnabled,
+                toolbarDimAlpha = toolbarDimAlpha,
+                onChangeToolbarDimAlpha = onChangeToolbarDimAlpha,
                 onQuitApplication = onQuitApplication
             ) },
             { AboutScreen() }

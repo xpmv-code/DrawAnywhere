@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.shezik.drawanywhere.BuildConfig
 import com.shezik.drawanywhere.R
 import com.shezik.drawanywhere.ui.theme.Spacing
+import kotlin.math.roundToInt
 
 @Composable
 internal fun ToolbarControls(
@@ -29,6 +30,8 @@ internal fun ToolbarControls(
     onChangeFingerDrawingEnabled: (Boolean) -> Unit,
     pressureEnabled: Boolean,
     onChangePressureEnabled: (Boolean) -> Unit,
+    toolbarDimAlpha: Float,
+    onChangeToolbarDimAlpha: (Float) -> Unit,
     onQuitApplication: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -75,6 +78,13 @@ internal fun ToolbarControls(
             isChecked = pressureEnabled,
             onCheckedChange = onChangePressureEnabled,
             description = stringResource(R.string.pressure_sensitive_strokes_desc)
+        )
+        SliderControl(
+            label = stringResource(R.string.toolbar_dim_opacity),
+            value = toolbarDimAlpha,
+            valueRange = 0.2f..1.0f,
+            onValueChange = onChangeToolbarDimAlpha,
+            valueDisplay = { "${(it * 100).roundToInt()}%" }
         )
         Button(
             onClick = onQuitApplication,

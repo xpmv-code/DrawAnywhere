@@ -45,6 +45,7 @@ class PreferencesManager(private val context: Context) {
         val VISIBLE_ON_START = booleanPreferencesKey("visible_on_start")
         val FINGER_DRAWING_ENABLED = booleanPreferencesKey("finger_drawing_enabled")
         val PRESSURE_ENABLED = booleanPreferencesKey("pressure_enabled")
+        val TOOLBAR_DIM_ALPHA = floatPreferencesKey("toolbar_dim_alpha")
         val RECENT_COLORS = stringPreferencesKey("recent_colors")
 
         // Pen-specific keys (for saving multiple pens)
@@ -116,6 +117,7 @@ class PreferencesManager(private val context: Context) {
             visibleOnStart = visibleOnStart,
             fingerDrawingEnabled = fingerDrawingEnabled,
             pressureEnabled = preferences[PreferencesKeys.PRESSURE_ENABLED] ?: defaultUiState.pressureEnabled,
+            toolbarDimAlpha = preferences[PreferencesKeys.TOOLBAR_DIM_ALPHA] ?: defaultUiState.toolbarDimAlpha,
             recentColors = recentColors,
             canvasVisible = visibleOnStart,
             firstDrawerOpen = visibleOnStart
@@ -130,6 +132,7 @@ class PreferencesManager(private val context: Context) {
             preferences[PreferencesKeys.VISIBLE_ON_START] = uiState.visibleOnStart
             preferences[PreferencesKeys.FINGER_DRAWING_ENABLED] = uiState.fingerDrawingEnabled
             preferences[PreferencesKeys.PRESSURE_ENABLED] = uiState.pressureEnabled
+            preferences[PreferencesKeys.TOOLBAR_DIM_ALPHA] = uiState.toolbarDimAlpha
             preferences[PreferencesKeys.RECENT_COLORS] = uiState.recentColors.joinToString(",") { it.toArgb().toString(16).padStart(8, '0') }
 
             // Save each pen's configuration
