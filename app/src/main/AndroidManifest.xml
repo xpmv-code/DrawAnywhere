@@ -62,6 +62,22 @@
                 android:resource="@xml/key_filter_config" />
         </service>
 
+        <!-- Answers "should stylus keys be intercepted?" for the external
+             system-server key relay (LSPosed module on HyperOS). -->
+        <provider
+            android:name=".KeyStateProvider"
+            android:authorities="com.shezik.drawanywhere.keystate"
+            android:exported="true" />
+
+        <!-- Receives stylus side-button events relayed by the same hook. -->
+        <receiver
+            android:name=".StylusKeyReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.shezik.drawanywhere.STYLUS_KEY" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>
