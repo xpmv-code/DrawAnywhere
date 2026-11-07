@@ -41,8 +41,10 @@ import com.shezik.drawanywhere.model.StrokeModifier
 object StylusKeyController {
     private const val TAG = "KeyFilter"
 
-    /** Press→release window for a hold to count as a tap. */
-    const val TAP_WINDOW_MS = 300L
+    /** Press→release window for a hold to count as a tap. Measured pen taps
+     *  on-device run 16–100ms with a slow user reaching ~390ms; holds while
+     *  drawing run 600ms+. 450ms keeps real taps out of the miss zone. */
+    const val TAP_WINDOW_MS = 450L
 
     private class HoldState {
         var active: Boolean = false

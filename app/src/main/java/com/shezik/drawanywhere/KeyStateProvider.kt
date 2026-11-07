@@ -21,6 +21,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 
 /**
  * Answers a single query for the external key relay (system-server hook):
@@ -34,10 +35,18 @@ class KeyStateProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         if (method != METHOD_INTERCEPT_ACTIVE) return null
         val viewModel = MainService.activeViewModel
+        val state = viewModel?.uiState?.value
         val active = MainService.isRunning && viewModel != null &&
-            viewModel.uiState.value.canvasVisible &&
-            !viewModel.uiState.value.canvasPassthrough
-        return Bundle().apply { putBoolean(KEY_ACTIVE, active) }
+            state?.canvasVisible == true && state.canvasPassthrough.not()
+        Log.d(TAG, "intercept_active: running=${MainService.isRunning} vm=${viewModel != null} " +
+            "visible=${state?.canvasVisible} passthrough=${state?.canvasPassthrough} -> $active")
+        return Bundle().apply {
+            putBoolean(KEY_ACTIVE, active)
+            putBoolean("running", MainService.isRunning)
+            putBoolean("has_vm", viewModel != null)
+            putBoolean("visible", state?.canvasVisible == true)
+            putBoolean("passthrough", state?.canvasPassthrough == true)
+        }
     }
 
     override fun query(
@@ -54,6 +63,7 @@ class KeyStateProvider : ContentProvider() {
     ): Int = 0
 
     companion object {
+        private const val TAG = "KeyFilter"
         const val AUTHORITY = "com.shezik.drawanywhere.keystate"
         const val METHOD_INTERCEPT_ACTIVE = "intercept_active"
         const val KEY_ACTIVE = "active"
