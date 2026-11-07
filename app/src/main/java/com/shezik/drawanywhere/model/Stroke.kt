@@ -2,6 +2,7 @@ package com.shezik.drawanywhere.model
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -12,6 +13,8 @@ enum class StrokeModifier {
 
 data class Stroke(
     internal val _points: MutableList<Offset> = mutableListOf(),
+    /** Per-point stylus pressure (0..1), parallel to [_points]; empty = constant width. */
+    internal val _pressures: MutableList<Float> = mutableListOf(),
     val color: Color,
     val width: Float,
     val alpha: Float,
@@ -20,6 +23,15 @@ data class Stroke(
     var modifiedAt: Long = createdAt,
 ) {
     val points: List<Offset> get() = _points
+    val pressures: List<Float> get() = _pressures
+
+    // Variable-width outline cache (body properties — excluded from data equality).
+    // Keyed by point/pressure counts: strokes are append-only while in progress,
+    // and edited strokes (pixel eraser splits) are new instances.
+    internal var outlineCore: Path? = null
+    internal var outlineGlow: Path? = null
+    internal var outlineCachePoints: Int = -1
+    internal var outlineCachePressures: Int = -1
 
     fun render(canvas: Canvas, paint: Paint) {
         if (_points.isEmpty()) return

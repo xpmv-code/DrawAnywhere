@@ -53,6 +53,10 @@ class MainService : Service() {
         private const val CHANNEL_ID = "default_channel"
         var isRunning: Boolean = false
             private set
+
+        /** Static bridge so KeyFilterService can reach the active overlay's view model. */
+        var activeViewModel: DrawViewModel? = null
+            private set
     }
 
     private val toolbarLifecycleOwner = ToolbarLifecycleOwner()
@@ -72,7 +76,11 @@ class MainService : Service() {
         val (initialUiState, initialServiceState) = runBlocking {
             preferencesManager.getSavedUiState() to preferencesManager.getSavedServiceState()
         }
-        drawController = DrawController(initialUiState.currentPenConfig)
+        drawController = DrawController(
+            initialConfig = initialUiState.currentPenConfig,
+            // Lambda runs at stroke time — viewModel is initialized by then.
+            pressureEnabled = { viewModel.uiState.value.pressureEnabled },
+        )
         viewModel = DrawViewModel(
             controller = drawController,
             preferencesManager = preferencesManager,
@@ -81,6 +89,7 @@ class MainService : Service() {
             stopService = { stopSelf() },
             containsDismissTarget = { x, y -> dismissTargetView.containsScreenPoint(x, y) },
         )
+        activeViewModel = viewModel
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
@@ -223,6 +232,7 @@ class MainService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        activeViewModel = null
         serviceScope.cancel()
         if (::toolbarView.isInitialized && toolbarView.isAttachedToWindow)
             windowManager.removeView(toolbarView)

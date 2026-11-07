@@ -23,8 +23,109 @@ interface HitTester {
 // ── Concrete renderers ──────────────────────────────────────────────
 
 object PenRenderer : Renderer {
+    /** Width factor at pressure 0 — keeps a faint trace instead of vanishing. */
+    private const val PRESSURE_MIN_FACTOR = 0.25f
+    /** Width gain per unit pressure: width = base * (MIN + GAIN * pressure). */
+    private const val PRESSURE_GAIN = 1.5f
+    /** Pressures within this tolerance of each other are treated as constant width. */
+    private const val PRESSURE_UNIFORM_TOLERANCE = 0.02f
+
+    fun pressureWidthFactor(pressure: Float): Float =
+        PRESSURE_MIN_FACTOR + PRESSURE_GAIN * pressure
+
     override fun render(stroke: Stroke, canvas: Canvas, paint: Paint, now: Long) {
-        canvas.drawPath(buildPath(stroke._points), paint)
+        val outline = variableOutline(stroke, widthScale = 1f)
+        if (outline == null) {
+            canvas.drawPath(buildPath(stroke._points), paint)
+            return
+        }
+        val prevStyle = paint.style
+        paint.style = Paint.Style.FILL
+        canvas.drawPath(outline, paint)
+        paint.style = prevStyle
+    }
+
+    /**
+     * Variable-width outline (filled polygon) for pressure-varying freehand strokes,
+     * cached on the [Stroke]. Returns null when pressure data is absent or uniform —
+     * caller should fall back to the legacy constant-width path.
+     *
+     * @param widthScale Multiplier applied to every width (laser glow uses GLOW_WIDTH).
+     */
+    fun variableOutline(stroke: Stroke, widthScale: Float = 1f): Path? {
+        val pts = stroke._points
+        val prs = stroke._pressures
+        val n = pts.size
+        if (n < 2 || prs.size < n) return null
+        for (i in 1 until n) {
+            if (kotlin.math.abs(prs[i] - prs[0]) > PRESSURE_UNIFORM_TOLERANCE) return buildOutlineCached(stroke, widthScale)
+        }
+        return null // uniform pressure → constant width legacy path
+    }
+
+    private fun buildOutlineCached(stroke: Stroke, widthScale: Float): Path {
+        val n = stroke._points.size
+        val cacheValid = stroke.outlineCachePoints == n && stroke.outlineCachePressures == n
+        if (!cacheValid) {
+            stroke.outlineCore = buildOutline(stroke._points, stroke._pressures, stroke.width)
+            stroke.outlineGlow = null
+            stroke.outlineCachePoints = n
+            stroke.outlineCachePressures = n
+        }
+        return if (widthScale == 1f) stroke.outlineCore!!
+        else stroke.outlineGlow ?: buildOutline(
+            stroke._points, stroke._pressures, stroke.width * widthScale
+        ).also { stroke.outlineGlow = it }
+    }
+
+    /** Builds a filled ribbon: per-point half-widths offset along averaged segment normals. */
+    private fun buildOutline(points: List<Offset>, pressures: List<Float>, baseWidth: Float): Path {
+        val n = points.size
+        val leftX = FloatArray(n); val leftY = FloatArray(n)
+        val rightX = FloatArray(n); val rightY = FloatArray(n)
+
+        var prevDx = 0f; var prevDy = 0f
+        var prevNx = 0f; var prevNy = 0f
+        for (i in 0 until n) {
+            // Segment direction toward next point (last point reuses previous segment).
+            val dx: Float; val dy: Float
+            if (i < n - 1) {
+                dx = points[i + 1].x - points[i].x
+                dy = points[i + 1].y - points[i].y
+            } else {
+                dx = prevDx; dy = prevDy
+            }
+            val len = kotlin.math.sqrt(dx * dx + dy * dy)
+            var nx: Float; var ny: Float
+            if (len > 1e-3f) {
+                nx = -dy / len; ny = dx / len
+                prevDx = dx / len; prevDy = dy / len
+            } else {
+                nx = prevNx; ny = prevNy // degenerate segment — reuse last normal
+            }
+            if (i > 0) {
+                // Average with previous segment normal (miter-lite), renormalize.
+                val ax = nx + prevNx; val ay = ny + prevNy
+                val alen = kotlin.math.sqrt(ax * ax + ay * ay)
+                if (alen > 1e-3f) { nx = ax / alen; ny = ay / alen }
+            }
+            prevNx = nx; prevNy = ny
+
+            val half = 0.5f * baseWidth * pressureWidthFactor(pressures[i])
+            leftX[i] = points[i].x + nx * half; leftY[i] = points[i].y + ny * half
+            rightX[i] = points[i].x - nx * half; rightY[i] = points[i].y - ny * half
+        }
+
+        val p = Path()
+        p.moveTo(leftX[0], leftY[0])
+        for (i in 1 until n) p.lineTo(leftX[i], leftY[i])
+        // Round end cap: quad through the tip.
+        p.quadTo(points[n - 1].x, points[n - 1].y, rightX[n - 1], rightY[n - 1])
+        for (i in n - 2 downTo 0) p.lineTo(rightX[i], rightY[i])
+        // Round start cap.
+        p.quadTo(points[0].x, points[0].y, leftX[0], leftY[0])
+        p.close()
+        return p
     }
 
     fun buildPath(points: List<Offset>): Path {
@@ -76,6 +177,22 @@ object LaserRenderer : Renderer {
             else ((ttl - elapsed) / (ttl * (1f - FADE_START))).coerceIn(0f, 1f)
 
         val baseAlpha = paint.alpha.toFloat()
+        val coreOutline = PenRenderer.variableOutline(stroke, widthScale = 1f)
+
+        if (coreOutline != null) {
+            // Pressure-varying: filled outlines, glow drawn first.
+            val prevStyle = paint.style
+            paint.style = Paint.Style.FILL
+            val glowOutline = PenRenderer.variableOutline(stroke, widthScale = GLOW_WIDTH)
+            paint.alpha = (baseAlpha * GLOW_ALPHA * fade).toInt().coerceIn(0, 255)
+            // core outline is non-null here, so the glow outline is too (same points/pressures)
+            canvas.drawPath(glowOutline!!, paint)
+            paint.alpha = (baseAlpha * fade).toInt().coerceIn(0, 255)
+            canvas.drawPath(coreOutline, paint)
+            paint.style = prevStyle
+            return
+        }
+
         val path = PenRenderer.buildPath(stroke.points)
 
         // Glow: wider and dimmer, derived from the stroke's own color/alpha

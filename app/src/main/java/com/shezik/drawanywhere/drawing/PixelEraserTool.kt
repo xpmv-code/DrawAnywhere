@@ -14,12 +14,12 @@ class PixelEraserTool(private val ctx: ToolContext) : StrokeTool {
 
     private var snapshot: List<Stroke>? = null
 
-    override fun onStart(point: Offset) {
+    override fun onStart(point: Offset, pressure: Float) {
         snapshot = null
         eraseAt(point)
     }
 
-    override fun onMove(point: Offset) {
+    override fun onMove(point: Offset, pressure: Float) {
         eraseAt(point)
     }
 
@@ -66,25 +66,33 @@ class PixelEraserTool(private val ctx: ToolContext) : StrokeTool {
             }
             if (keep.all { it }) { i--; continue }
 
-            val segments = mutableListOf<MutableList<Offset>>()
+            val pressures = stroke._pressures
+            val segments = mutableListOf<Pair<MutableList<Offset>, MutableList<Float>>>()
             var seg: MutableList<Offset>? = null
+            var segP: MutableList<Float>? = null
             for (j in pts.indices) {
                 if (keep[j]) {
-                    if (seg == null) seg = mutableListOf()
+                    if (seg == null) {
+                        seg = mutableListOf()
+                        segP = mutableListOf()
+                    }
                     seg.add(pts[j])
+                    segP!!.add(if (j < pressures.size) pressures[j] else 1f)
                 } else {
                     if (!seg.isNullOrEmpty()) {
-                        segments.add(seg)
+                        segments.add(seg to segP!!)
                         seg = null
+                        segP = null
                     }
                 }
             }
-            if (!seg.isNullOrEmpty()) segments.add(seg)
+            if (!seg.isNullOrEmpty()) segments.add(seg to segP!!)
 
             strokes.removeAt(i)
-            for (segPts in segments.reversed()) {
+            for ((segPts, segPressures) in segments.reversed()) {
                 strokes.add(i, Stroke(
                     _points = segPts,
+                    _pressures = segPressures,
                     color = stroke.color,
                     width = stroke.width,
                     alpha = stroke.alpha,

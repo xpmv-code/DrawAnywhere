@@ -49,6 +49,7 @@ data class UiState(
     val autoClearCanvas: Boolean = false,
     val visibleOnStart: Boolean = true,
     val fingerDrawingEnabled: Boolean = true,
+    val pressureEnabled: Boolean = true,
     val recentColors: List<Color> = emptyList(),
 
     val currentPenType: PenType = PenType.Pen,
@@ -143,7 +144,14 @@ class DrawViewModel(
     private var previousPenType: PenType? = null
     private var isStrokeDown: Boolean = false
 
-    fun startStroke(point: Offset, modifier: StrokeModifier) {
+    /** Total strokes started this session — key-hold tap detection compares snapshots. */
+    var strokesStartedCount: Int = 0
+        private set
+
+    /** Tool saved before an eraser-key tap toggle; restored on the way back. */
+    private var keySavedPenType: PenType? = null
+
+    fun startStroke(point: Offset, modifier: StrokeModifier, pressure: Float = 1f) {
         finishStroke()
 
         val newPenType = resolvePenType(modifier)
@@ -152,13 +160,14 @@ class DrawViewModel(
             switchToPen(newPenType)
         }
 
-        controller.createStroke(point)
+        controller.createStroke(point, pressure)
+        strokesStartedCount++
         isStrokeDown = true
     }
 
-    fun updateStroke(point: Offset) {
+    fun updateStroke(point: Offset, pressure: Float = 1f) {
         if (!isStrokeDown) return
-        controller.updateLatestStroke(point)
+        controller.updateLatestStroke(point, pressure)
     }
 
     fun finishStroke() {
@@ -304,6 +313,34 @@ class DrawViewModel(
 
     fun setFingerDrawingEnabled(state: Boolean) =
         _uiState.update { it.copy(fingerDrawingEnabled = state) }
+
+    fun setPressureEnabled(state: Boolean) =
+        _uiState.update { it.copy(pressureEnabled = state) }
+
+    // --- Stylus key actions (H7 side buttons via keylayout → PAGE_UP / PAGE_DOWN) ---
+
+    /** Cycle to the next tool in toolbar order (Pen → Laser → … → PixelEraser → Pen). */
+    fun cyclePenType() {
+        val order = PenType.entries
+        val next = order[(uiState.value.currentPenType.ordinal + 1) % order.size]
+        switchToPen(next)
+    }
+
+    /**
+     * Upper-key tap toggle: switch to StrokeEraser, or restore the saved tool
+     * when already on an eraser.
+     */
+    fun toggleEraserKeyTool() {
+        val current = uiState.value.currentPenType
+        if (current.isEraser) {
+            val restore = keySavedPenType ?: PenType.Pen
+            keySavedPenType = null
+            switchToPen(restore)
+        } else {
+            keySavedPenType = current
+            switchToPen(PenType.StrokeEraser)
+        }
+    }
 
     // --- Viewport ---
 

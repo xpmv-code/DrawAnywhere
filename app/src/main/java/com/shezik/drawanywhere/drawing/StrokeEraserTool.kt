@@ -9,11 +9,11 @@ import com.shezik.drawanywhere.model.DrawAction
  */
 class StrokeEraserTool(private val ctx: ToolContext) : StrokeTool {
 
-    override fun onStart(point: Offset) {
+    override fun onStart(point: Offset, pressure: Float) {
         eraseAt(point)
     }
 
-    override fun onMove(point: Offset) {
+    override fun onMove(point: Offset, pressure: Float) {
         eraseAt(point)
     }
 

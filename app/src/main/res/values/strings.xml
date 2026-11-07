@@ -21,6 +21,10 @@
     <string name="clear_on_hiding_canvas">Clear canvas on hide</string>
     <string name="canvas_visible_on_start">Open canvas on start</string>
     <string name="finger_drawing">Finger drawing</string>
+    <string name="pressure_sensitive_strokes">Pressure-sensitive strokes</string>
+    <string name="pressure_sensitive_strokes_desc">Variable stroke width from stylus pressure (pen &amp; laser)</string>
+    <string name="key_filter_service_label">DrawAnywhere stylus keys</string>
+    <string name="key_filter_service_desc">Lets DrawAnywhere respond to stylus side buttons on devices that report them as PAGE_UP/PAGE_DOWN keys. Only active while the DrawAnywhere canvas is visible.</string>
     <string name="quit">Quit</string>
     <string name="hide_canvas">Hide canvas</string>
     <string name="show_canvas">Show canvas</string>

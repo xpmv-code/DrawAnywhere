@@ -13,6 +13,8 @@ class ToolContext(
     val strokes: MutableList<Stroke>,
     /** Current pen configuration (width, color, alpha, penType). */
     val penConfig: PenConfig,
+    /** Whether per-point pressure capture is enabled (checked at stroke time). */
+    val pressureEnabled: () -> Boolean = { true },
     private val onUndoPush: (DrawAction) -> Unit,
     private val onChanged: () -> Unit,
 ) {

@@ -10,9 +10,10 @@ import com.shezik.drawanywhere.model.Stroke
  */
 class FreehandTool(private val ctx: ToolContext) : StrokeTool {
 
-    override fun onStart(point: Offset) {
+    override fun onStart(point: Offset, pressure: Float) {
         ctx.strokes.add(Stroke(
             _points = mutableListOf(point),
+            _pressures = mutableListOf(if (ctx.pressureEnabled()) pressure else 1f),
             color = ctx.penConfig.color,
             width = ctx.penConfig.width,
             alpha = ctx.penConfig.alpha,
@@ -20,9 +21,10 @@ class FreehandTool(private val ctx: ToolContext) : StrokeTool {
         ))
     }
 
-    override fun onMove(point: Offset) {
+    override fun onMove(point: Offset, pressure: Float) {
         val stroke = ctx.strokes.lastOrNull() ?: return
         stroke._points.add(point)
+        stroke._pressures.add(if (ctx.pressureEnabled()) pressure else 1f)
         stroke.modifiedAt = System.currentTimeMillis()
     }
 

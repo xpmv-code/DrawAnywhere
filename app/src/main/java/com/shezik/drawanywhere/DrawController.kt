@@ -30,7 +30,10 @@ import kotlinx.coroutines.flow.asStateFlow
  * Owns the stroke list and undo/redo stack. Drawing logic is delegated to
  * [StrokeTool] implementations via [PenType.createTool].
  */
-class DrawController(initialConfig: PenConfig) {
+class DrawController(
+    initialConfig: PenConfig,
+    private val pressureEnabled: () -> Boolean = { true },
+) {
     var penConfig: PenConfig = initialConfig
         private set
 
@@ -56,6 +59,7 @@ class DrawController(initialConfig: PenConfig) {
     private val toolContext get() = ToolContext(
         strokes = _strokeList,
         penConfig = penConfig,
+        pressureEnabled = pressureEnabled,
         onUndoPush = undoRedo::push,
         onChanged = ::notifyChanged,
     )
@@ -65,14 +69,14 @@ class DrawController(initialConfig: PenConfig) {
         onStrokesChanged?.invoke()
     }
 
-    fun createStroke(newPoint: Offset) {
+    fun createStroke(newPoint: Offset, pressure: Float = 1f) {
         val tool = penConfig.penType.createTool(toolContext)
         activeTool = tool
-        tool.onStart(newPoint)
+        tool.onStart(newPoint, pressure)
     }
 
-    fun updateLatestStroke(newPoint: Offset) {
-        activeTool?.onMove(newPoint)
+    fun updateLatestStroke(newPoint: Offset, pressure: Float = 1f) {
+        activeTool?.onMove(newPoint, pressure)
     }
 
     fun finishStroke() {

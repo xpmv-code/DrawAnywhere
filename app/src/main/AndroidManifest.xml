@@ -49,6 +49,19 @@
                 android:value="The foreground service is used to host the canvas on top of other apps, which is the business logic of this application." />
         </service>
 
+        <service
+            android:name=".KeyFilterService"
+            android:label="@string/key_filter_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/key_filter_config" />
+        </service>
+
     </application>
 
 </manifest>

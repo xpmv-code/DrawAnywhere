@@ -27,6 +27,8 @@ internal fun ToolbarControls(
     onChangeVisibleOnStart: (Boolean) -> Unit,
     fingerDrawingEnabled: Boolean,
     onChangeFingerDrawingEnabled: (Boolean) -> Unit,
+    pressureEnabled: Boolean,
+    onChangePressureEnabled: (Boolean) -> Unit,
     onQuitApplication: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -67,6 +69,12 @@ internal fun ToolbarControls(
             label = stringResource(R.string.finger_drawing),
             isChecked = fingerDrawingEnabled,
             onCheckedChange = onChangeFingerDrawingEnabled
+        )
+        CheckboxControl(
+            label = stringResource(R.string.pressure_sensitive_strokes),
+            isChecked = pressureEnabled,
+            onCheckedChange = onChangePressureEnabled,
+            description = stringResource(R.string.pressure_sensitive_strokes_desc)
         )
         Button(
             onClick = onQuitApplication,

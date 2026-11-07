@@ -20,6 +20,7 @@ import android.util.Log
 import android.view.MotionEvent
 import androidx.compose.ui.geometry.Offset
 import com.shezik.drawanywhere.DrawViewModel
+import com.shezik.drawanywhere.KeyFilterService
 import com.shezik.drawanywhere.model.StrokeModifier
 import kotlin.math.sqrt
 
@@ -87,6 +88,8 @@ class CanvasTouchHandler(
     private var strokePending: Boolean = false
     private var pendingModifier: StrokeModifier = StrokeModifier.None
     private val pendingMovePoints = mutableListOf<Offset>()
+    private val pendingMovePressures = mutableListOf<Float>()
+    private var pendingDownPressure: Float = 1f
     private var downTimeMs: Long = 0L
     private val fingerDebounceMs: Long = 50L
 
@@ -316,11 +319,12 @@ class CanvasTouchHandler(
         }
         downTimeMs = event.eventTime
         pendingModifier = detectStrokeModifier(event)
+        pendingDownPressure = event.pressure
         val worldPt = vp.screenToWorld(Offset(event.x, event.y))
 
         if (isStylus) {
             Log.d(TAG, "  → stylus DOWN: stroke started (ptr=#$activePointerId, mod=$pendingModifier)")
-            viewModel.startStroke(worldPt, pendingModifier)
+            viewModel.startStroke(worldPt, pendingModifier, event.pressure)
             strokeInProgress = true
             strokePending = false
         } else {
@@ -330,7 +334,9 @@ class CanvasTouchHandler(
             }
             Log.d(TAG, "  → finger DOWN: pending (debounce=${fingerDebounceMs}ms)")
             pendingMovePoints.clear()
+            pendingMovePressures.clear()
             pendingMovePoints.add(worldPt)
+            pendingMovePressures.add(event.pressure)
             strokePending = true
         }
     }
@@ -354,16 +360,23 @@ class CanvasTouchHandler(
         for (i in 0 until event.historySize) {
             pendingMovePoints.add(vp.screenToWorld(
                 Offset(event.getHistoricalX(pi, i), event.getHistoricalY(pi, i))))
+            pendingMovePressures.add(event.getHistoricalPressure(pi, i))
         }
         pendingMovePoints.add(vp.screenToWorld(
             Offset(event.getX(pi), event.getY(pi))))
+        pendingMovePressures.add(event.pressure)
     }
 
     private fun flushPendingStroke(eventTime: Long) {
         Log.d(TAG, "  → debounce ended (${eventTime - downTimeMs}ms): flushing ${pendingMovePoints.size} pts")
-        viewModel.startStroke(pendingMovePoints.removeAt(0), pendingModifier)
-        for (pt in pendingMovePoints) viewModel.updateStroke(pt)
+        viewModel.startStroke(
+            pendingMovePoints.removeAt(0), pendingModifier,
+            pendingMovePressures.removeAt(0))
+        for ((idx, pt) in pendingMovePoints.withIndex()) {
+            viewModel.updateStroke(pt, pendingMovePressures.getOrElse(idx) { 1f })
+        }
         pendingMovePoints.clear()
+        pendingMovePressures.clear()
         strokeInProgress = true
         strokePending = false
     }
@@ -372,11 +385,13 @@ class CanvasTouchHandler(
         val pi = event.findPointerIndex(activePointerId)
         if (pi < 0) return
         for (i in 0 until event.historySize) {
-            viewModel.updateStroke(vp.screenToWorld(
-                Offset(event.getHistoricalX(pi, i), event.getHistoricalY(pi, i))))
+            viewModel.updateStroke(
+                vp.screenToWorld(Offset(event.getHistoricalX(pi, i), event.getHistoricalY(pi, i))),
+                event.getHistoricalPressure(pi, i))
         }
-        viewModel.updateStroke(vp.screenToWorld(
-            Offset(event.getX(pi), event.getY(pi))))
+        viewModel.updateStroke(
+            vp.screenToWorld(Offset(event.getX(pi), event.getY(pi))),
+            event.pressure)
     }
 
     private fun onPointerUp(event: MotionEvent) {
@@ -388,7 +403,7 @@ class CanvasTouchHandler(
                 strokeInProgress = false
             } else {
                 Log.d(TAG, "  → tap: single-point dot")
-                viewModel.startStroke(pendingMovePoints.first(), pendingModifier)
+                viewModel.startStroke(pendingMovePoints.first(), pendingModifier, pendingDownPressure)
                 viewModel.finishStroke()
             }
             discardPendingStroke()
@@ -458,7 +473,10 @@ class CanvasTouchHandler(
             primary && secondary -> StrokeModifier.Both
             primary -> StrokeModifier.PrimaryButton
             secondary -> StrokeModifier.SecondaryButton
-            else -> StrokeModifier.None
+            // Hardware button state is unavailable on some devices (e.g. H7 stylus on
+            // Xiaomi Pad whose keylayout reports buttons as PAGE_UP/PAGE_DOWN key
+            // events); fall back to the accessibility key filter's hold state.
+            else -> KeyFilterService.activeStrokeModifier()
         }
     }
 }

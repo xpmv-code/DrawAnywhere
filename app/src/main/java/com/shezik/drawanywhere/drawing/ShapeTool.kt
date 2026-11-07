@@ -10,7 +10,7 @@ import com.shezik.drawanywhere.model.Stroke
  */
 class ShapeTool(private val ctx: ToolContext) : StrokeTool {
 
-    override fun onStart(point: Offset) {
+    override fun onStart(point: Offset, pressure: Float) {
         ctx.strokes.add(Stroke(
             _points = mutableListOf(point, point),
             color = ctx.penConfig.color,
@@ -20,7 +20,7 @@ class ShapeTool(private val ctx: ToolContext) : StrokeTool {
         ))
     }
 
-    override fun onMove(point: Offset) {
+    override fun onMove(point: Offset, pressure: Float) {
         ctx.strokes.lastOrNull()?.let { it._points[1] = point }
     }
 

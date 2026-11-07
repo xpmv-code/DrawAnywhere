@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Key-filter-only accessibility service: no window content access, no events. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/key_filter_service_desc"
+    android:canRetrieveWindowContent="false"
+    android:accessibilityFlags="flagRequestFilterKeyEvents"
+    android:notificationTimeout="100" />
